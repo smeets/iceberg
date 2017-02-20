@@ -1,0 +1,37 @@
+{
+	"metadata": {
+		"version": 4.4,
+		"type": "Object",
+		"generator": "Object3D.toJSON"
+	},
+	"geometries": [
+		{
+			"uuid": "8CB461B8-EC5C-4660-B6C4-BDF5C407D2B9",
+			"type": "BoxBufferGeometry",
+			"width": 1,
+			"height": 1,
+			"depth": 1
+		}],
+	"materials": [
+		{
+			"uuid": "6B989A32-DC17-4989-B7F2-34C8552A4533",
+			"type": "MeshStandardMaterial",
+			"color": 16777215,
+			"roughness": 0.5,
+			"metalness": 0.5,
+			"emissive": 5286355,
+			"depthFunc": 3,
+			"depthTest": true,
+			"depthWrite": true,
+			"skinning": false,
+			"morphTargets": false
+		}],
+	"object": {
+		"uuid": "0F3611DF-3496-4776-A59B-6E71375ED0A2",
+		"type": "Mesh",
+		"name": "Floor",
+		"matrix": [10,0,0,0,0,1,0,0,0,0,10,0,0,0,0,1],
+		"geometry": "8CB461B8-EC5C-4660-B6C4-BDF5C407D2B9",
+		"material": "6B989A32-DC17-4989-B7F2-34C8552A4533"
+	}
+}
