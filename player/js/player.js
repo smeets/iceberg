@@ -8,7 +8,7 @@ var player = {
 var input = [0,0,0]
 var old_input = [0,0,0]
 var reset_on_next = true
-var game_loop = setInterval(tick, 32)
+var game_loop = setInterval(tick, 64)
 
 var debug = document.getElementById('debug')
 function debug_clear() {
@@ -17,6 +17,8 @@ function debug_clear() {
         debug.removeChild(debug.lastChild)
 }
 
+var peer = new SimplePeer({ initiator: true })
+
 socket.addEventListener('open', function (event) {
     socket.send(JSON.stringify({ req: 'join' }));
     console.log('connect')
@@ -24,12 +26,45 @@ socket.addEventListener('open', function (event) {
 
 socket.addEventListener('message', function (event) {
     var data = JSON.parse(event.data)
+
     if (data.req === 'join') {
         player.id = data.id
-        is_connected = true
+
+        peer = new SimplePeer({ initiator: true })
+
+        peer.on('signal', function (data) {
+            document.getElementById('status').textContent = 'signaling'
+            console.log('signaling', peer, data)
+            socket.send(JSON.stringify({ req:'signal', who:player.id, data:data}))
+        })
+
+        peer.on('connect', function () {
+            is_connected = true
+            document.getElementById('status').textContent = 'connected'
+            console.log(peer, 'is now connected')
+        })
+
+        peer.on('close', function() {
+            document.getElementById('status').textContent = 'disconnected'
+            console.log(peer, 'is now disconnected')
+        })
+
+        peer.on('error', function(err) {
+            document.getElementById('status').textContent = 'error = ' + err
+        })
+
+        peer.on('data', function () {
+
+        })
+        return
     }
 
-    console.log('Message from server', data, event.data, event);
+    if (data.req === 'signal') {
+        console.log('got signal', data.data)
+        peer.signal(data.data)
+        return
+    }
+
 })
 
 socket.addEventListener('close', function (event) {
@@ -42,7 +77,7 @@ function tick() {
 
     if (!is_connected) return
 
-    socket.send(JSON.stringify({
+    peer.send(JSON.stringify({
         req: 'input',
         id: player.id,
         input: input

@@ -33,13 +33,18 @@ module.exports = function start(port) {
             var newPlayer = new Player(this)
             players.push(newPlayer)
 
+            broadcast(observers, JSON.stringify({ req:'join', id: newPlayer.id }))
             this.send(JSON.stringify({ req: 'join', msg: 'accept', id: newPlayer.id }))
             console.log('player', newPlayer.id, 'joined')
         },
 
         'observe': function(packet) {
             observers.push(this)
-            this.send(JSON.stringify({ 'req': 'observe', 'msg': 'accept', ip: ip }))
+            this.send(JSON.stringify({
+                'req': 'observe',
+                'msg': 'accept',
+                ip: ip,
+            }))
         },
 
         'input': function(packet) {
@@ -53,6 +58,27 @@ module.exports = function start(port) {
             if (!player) return
 
             player.input.readArray(packet.input)
+        },
+
+        'signal': function(packet) {
+            var isObserver = observers.indexOf(this) !== -1
+
+            if (isObserver) {
+                var player = undefined
+                for (var i = 0; i < players.length; i++) {
+                    if (players[i].id === packet.who) {
+                        player = players[i]
+                        break
+                    }
+                }
+                if (!player) return
+
+                console.log('from', 'observer', 'to', packet.who)
+                player.ws.send(JSON.stringify({ req:'signal', who:packet.who, data:packet.data}))
+            } else {
+                console.log('from', packet.who, 'to', 'observer')
+                broadcast(observers, JSON.stringify({ req:'signal', who:packet.who, data:packet.data}))
+            }
         }
     }
 
