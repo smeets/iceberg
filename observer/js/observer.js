@@ -2,9 +2,20 @@ var socket = new WebSocket('ws://' + window.location.hostname + ':3000')
 var is_connected = false
 
 socket.addEventListener('open', function (event) {
-    socket.send('observer');
-    is_connected = true
+    socket.send(JSON.stringify({ req: 'observe' }));
 })
+
+
+function showQrCode() {
+    document.getElementById("qrcode").classList.remove('disabled')
+    document.getElementById("qrcode-close").classList.remove('disabled')
+    document.getElementById("qrcode-show").classList.add('disabled')
+}
+function hideQrCode() {
+    document.getElementById("qrcode").classList.add('disabled')
+    document.getElementById("qrcode-close").classList.add('disabled')
+    document.getElementById("qrcode-show").classList.remove('disabled')
+}
 
 var id2cube = {}
 var players = []
@@ -21,12 +32,23 @@ function getPlayerObject(id) {
 }
 socket.addEventListener('message', function (event) {
     var data = JSON.parse(event.data)
-    var obj = getPlayerObject(data.player)
-    
-    var pos = data.position
-    obj.position.x = pos[0]
-    obj.position.y = 1
-    obj.position.z = -pos[1]
+
+    if (data.req === 'observe') {
+        is_connected = true
+        new QRCode(document.getElementById("qrcode"), "http://" + data.ip + ":8080/player");
+        document.getElementById("qrcode-close").addEventListener('click', hideQrCode, false)
+        document.getElementById("qrcode-show").addEventListener('click', showQrCode, false)
+        return
+    }
+
+    if (data.req === 'update') {
+        var obj = getPlayerObject(data.player)
+
+        var pos = data.position
+        obj.position.x = pos[0]
+        obj.position.y = 1
+        obj.position.z = -pos[1]
+    }
 })
 
 socket.addEventListener('close', function (event) {
@@ -71,3 +93,4 @@ loader.load(
 );
 
 render();
+

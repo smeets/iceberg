@@ -1,9 +1,40 @@
 <html>
     <head>
         <title>observer</title>
+        <style type="text/css">
+        	#qrcode {
+        		position: absolute;
+        		width: 100%;
+        		height: 100%;
+        		top: 0;
+        		left: 0;
+        		text-align: center;
+        		color: green;
+
+        		background-color: rgba(5,5,5,0.5);
+        	}
+        	#qrcode > img { margin: 0 auto; margin-top: 64px;}
+        	#qrcode-show {
+        		position: absolute;
+        		top: 16px;
+        		right: 16px;
+        	}
+        	.disabled { display: none; }
+
+        	html,body {margin:0; padding:0;}
+
+        </style>
+        <script type="text/javascript" src="http://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
     </head>
     <body>
+    	<button id='qrcode-show' class='disabled'>show qr code</button>
+
         <script src="js/three.js"></script>
         <script src="js/observer.js"></script>
+
+    	<div id='qrcode'>
+    		<h1>scan code to join</h1>
+    		<button id='qrcode-close'>hide qr code</button>
+    	</div>
     </body>
 </html>
