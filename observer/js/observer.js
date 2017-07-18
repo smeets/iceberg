@@ -117,13 +117,14 @@ document.body.appendChild( renderer.domElement );
 var render = function () {
     requestAnimationFrame( render );
 
+    var keymap = ['x','y','z']
     for (var i = 0; i < players.length; i++) {
         var player = players[i]
         for (var j = 0; j < 3; j++) {
             player.velocity[j] = player.input[j] * 0.1
             player.velocity[j] *= 0.90
 
-            player.cube.position[j] += player.velocity[j] * 0.016
+            player.cube.position[keymap[j]] += player.velocity[j] * 0.016
         }
 
     }
