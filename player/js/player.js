@@ -1,30 +1,22 @@
-var socket = new WebSocket('ws://' + window.location.hostname + ':3000')
-var is_connected = false
-
+var socket = undefined
 var player = {
     id: -1
 }
 
 var input = [0,0,0]
-var old_input = [0,0,0]
+var calibration = [0,0,0]
 var reset_on_next = true
-var game_loop = setInterval(tick, 64)
+var game_loop = -1
+var peer = undefined
 
-var debug = document.getElementById('debug')
-function debug_clear() {
-    var childs = debug.childNodes.length
-    while (childs--)
-        debug.removeChild(debug.lastChild)
+// level 1 networking
+function on_socket_open(event) {
+    socket.send(JSON.stringify({ req: 'join' }));
 }
 
-var peer = new SimplePeer({ initiator: true })
+function on_socket_close(event) { }
 
-socket.addEventListener('open', function (event) {
-    socket.send(JSON.stringify({ req: 'join' }));
-    console.log('connect')
-})
-
-socket.addEventListener('message', function (event) {
+function on_socket_message(event) {
     var data = JSON.parse(event.data)
 
     if (data.req === 'join') {
@@ -32,64 +24,60 @@ socket.addEventListener('message', function (event) {
 
         peer = new SimplePeer({ initiator: true })
 
-        peer.on('signal', function (data) {
-            document.getElementById('status').textContent = 'signaling'
-            console.log('signaling', peer, data)
-            socket.send(JSON.stringify({ req:'signal', who:player.id, data:data}))
-        })
-
-        peer.on('connect', function () {
-            is_connected = true
-            document.getElementById('status').textContent = 'connected'
-            console.log(peer, 'is now connected')
-        })
-
-        peer.on('close', function() {
-            document.getElementById('status').textContent = 'disconnected'
-            console.log(peer, 'is now disconnected')
-        })
+        peer.on('signal', player_signal)
+        peer.on('connect', player_join)
+        peer.on('close', player_leave)
 
         peer.on('error', function(err) {
+            player_leave()
             document.getElementById('status').textContent = 'error = ' + err
         })
 
-        peer.on('data', function () {
-
-        })
         return
     }
 
     if (data.req === 'signal') {
-        console.log('got signal', data.data)
         peer.signal(data.data)
         return
     }
+}
 
-})
+// level 2 networking
+function player_signal(data) {
+    document.getElementById('status').textContent = 'signaling'
+    socket.send(JSON.stringify({ req: 'signal', who: player.id, data: data}))
+}
 
-socket.addEventListener('close', function (event) {
-    is_connected = false
-    console.log('disconnect')
-})
+function player_join() {
+    zero_orientation()
+    game_loop = setInterval(tick, 64)
+
+    document.getElementById('status').textContent = 'connected'
+}
+
+function player_leave() {
+    clearInterval(game_loop)
+    game_loop = 0
+    document.getElementById('status').textContent = 'disconnected'
+}
 
 function tick() {
-    var input = sampleInput()
-
-    if (!is_connected) return
-
     peer.send(JSON.stringify({
         req: 'input',
         id: player.id,
-        input: input
+        input: sampleInput()
     }))
 }
 
+var debug = undefined
 function sampleInput() {
-    var x = input[0]-old_input[0]
-    var y = input[1]-old_input[1]
-    var z = input[2]-old_input[2]
+    var x = input[0] - calibration[0]
+    var y = input[1] - calibration[1]
+    var z = input[2] - calibration[2]
 
-    debug_clear()
+    var childs = debug.childNodes.length
+    while (childs--)
+        debug.removeChild(debug.lastChild)
     debug.appendChild(document.createTextNode("x:" + x))
     debug.appendChild(document.createElement('p'))
     debug.appendChild(document.createTextNode("y:" + y))
@@ -99,23 +87,19 @@ function sampleInput() {
     return [x, y, z]
 }
 
-function tilt(x, y, z) {
-    if (x >  90) { x =  90};
-    if (x < -90) { x = -90};
-
-    // To make computation easier we shift the range of
-    // x and y to [0,180]
-    x += 90;
-    y += 90;
+function tilt(event) {
+    var x = event.beta // -180-180
+    var y = event.gamma // -90-90
+    var z = event.alpha // 0-360
 
     input[0] = x
     input[1] = y
 	input[2] = z
 
     if (reset_on_next) {
-        old_input[0] = input[0]
-        old_input[1] = input[1]
-        old_input[2] = input[2]
+        calibration[0] = x
+        calibration[1] = y
+        calibration[2] = z
         reset_on_next = false
     }
 }
@@ -124,10 +108,15 @@ function zero_orientation() {
     reset_on_next = true
 }
 
-window.addEventListener('deviceorientation', function (event) {
-	tilt(event.beta, event.gamma, event.alpha)
-}, false)
 
 window.addEventListener('load', function () {
-    document.getElementById('reset').addEventListener('click', zero_orientation)
-})
+    debug = document.getElementById('debug' )
+
+    document.getElementById('reset').addEventListener('click', zero_orientation, false)
+    window.addEventListener('deviceorientation', tilt, false)
+
+    socket = new WebSocket('ws://' + window.location.hostname + ':3000')
+    socket.addEventListener('open', on_socket_open)
+    socket.addEventListener('close', on_socket_close)
+    socket.addEventListener('message', on_socket_message)
+}, false)

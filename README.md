@@ -1,17 +1,22 @@
 # iceberg
-hybrid tilt-based mobile game
+tilt-based mobile game over webrtc.
 
-## layout
-weird for now
+### server (nodejs)
+set up player registration to handle webrtc signaling.
 
-### server
-e.g. handle player input && do actual gameplay logic
+### player (browser)
+client side code (input), connects to observer via webrtc.
 
-### player
-e.g. files that are run on the player side of things
+ - register on _server_ (unique player id)
+ - connect via webrtc to _observer_ (join actual game)
+ - deliver sampled inputs to _observer_
 
-### observer/renderer
-not sure if wise to split server/observer but maybe not.
+### observer (browser)
+game logic, renderer, accepts webrtc connections
+
+ - register on _server_
+ - accept webrtc connections
+  - each connection corresponds to a new player
 
 ## how to
 ```
@@ -20,6 +25,5 @@ npm install
 node index.js
 ```
 
-action:
  - open browser: `localhost:8080/render`
- - open phone: `your-ip:8080/player`
+ - scan qr code or browse to: `server-addr:8080/player`

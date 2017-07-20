@@ -1,18 +1,8 @@
 var socket = new WebSocket('ws://' + window.location.hostname + ':3000')
-var is_connected = false
 
-function getPlayerByPeer(peer) {
-    for (var i = 0; i < players.length; i++) {
-        if (peer === players[i].peer)
-            return players[i]
-    }
-    return undefined
-}
 function getPlayerById(id) {
-    for (var i = 0; i < players.length; i++) {
-        if (id === players[i].id)
-            return players[i]
-    }
+    if (id2player[id] >= 0)
+        return players[id2player[id]]
     return undefined
 }
 
@@ -56,7 +46,7 @@ function hideQrCode() {
 }
 
 var id2cube = {}
-var peer2player = {}
+var id2player = {}
 var players = []
 function setupNewPlayer(id) {
     var geometry = new THREE.BoxGeometry( 1, 1, 1 );
@@ -71,6 +61,7 @@ function setupNewPlayer(id) {
         input: [0,0,0],
         velocity: [0,0,0]
     }
+    id2player[id] = players.length
     players.push(player)
     return player
 }
@@ -85,7 +76,6 @@ socket.addEventListener('message', function (event) {
     var data = JSON.parse(event.data)
 
     if (data.req === 'observe') {
-        is_connected = true
         new QRCode(document.getElementById("qrcode"), "http://" + data.ip + ":8080/player");
         document.getElementById("qrcode-close").addEventListener('click', hideQrCode, false)
         document.getElementById("qrcode-show").addEventListener('click', showQrCode, false)
@@ -98,10 +88,6 @@ socket.addEventListener('message', function (event) {
             player = setupNewPlayer(data.who)
         player.peer.signal(data.data)
     }
-})
-
-socket.addEventListener('close', function (event) {
-    is_connected = false
 })
 
 var scene = new THREE.Scene();
@@ -117,16 +103,16 @@ document.body.appendChild( renderer.domElement );
 var render = function () {
     requestAnimationFrame( render );
 
-    var keymap = ['x','y','z']
     for (var i = 0; i < players.length; i++) {
         var player = players[i]
         for (var j = 0; j < 3; j++) {
             player.velocity[j] += player.input[j] * 0.05
-            player.velocity[j] *= 0.90
-
-            player.cube.position[keymap[j]] += player.velocity[j] * 0.016
+            player.velocity[j] *= 0.90 // friction
         }
 
+        player.cube.position.x += player.velocity[0] * 0.016
+        player.cube.position.y += player.velocity[1] * 0.016
+        player.cube.position.z += player.velocity[2] * 0.016
     }
 
     renderer.render(scene, camera);
