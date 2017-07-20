@@ -17,6 +17,11 @@ Object.keys(ifaces).forEach(function (ifname) {
 console.log('using ip address', ip)
 
 module.exports = function start(port) {
+    const OBSERVE_ACCEPT_RESPONSE = JSON.stringify({
+        'req': 'observe',
+        ip: ip
+    })
+
     var wss = new WebSocketServer({ port: port })
     console.log('WSS', '@', port)
 
@@ -29,37 +34,21 @@ module.exports = function start(port) {
     }
 
     var handlers = {
+        // { req: 'join' } --> { req: 'join', id: player_id }
         'join': function(packet) {
             var newPlayer = new Player(this)
             players.push(newPlayer)
 
-            broadcast(observers, JSON.stringify({ req:'join', id: newPlayer.id }))
-            this.send(JSON.stringify({ req: 'join', msg: 'accept', id: newPlayer.id }))
-            console.log('player', newPlayer.id, 'joined')
+            this.send(JSON.stringify({ req: 'join', id: newPlayer.id }))
         },
 
+        // { req: 'observe' } --> { req: 'observe', ip: local_addr }
         'observe': function(packet) {
             observers.push(this)
-            this.send(JSON.stringify({
-                'req': 'observe',
-                'msg': 'accept',
-                ip: ip,
-            }))
+            this.send(OBSERVE_ACCEPT_RESPONSE)
         },
 
-        'input': function(packet) {
-            var player = undefined
-            for (var i = 0; i < players.length; i++) {
-                if (players[i].id === packet.id) {
-                    player = players[i]
-                    break
-                }
-            }
-            if (!player) return
-
-            player.input.readArray(packet.input)
-        },
-
+        // { req: 'signal', who: player.id, data: signal_data }
         'signal': function(packet) {
             var isObserver = observers.indexOf(this) !== -1
 
@@ -73,10 +62,8 @@ module.exports = function start(port) {
                 }
                 if (!player) return
 
-                console.log('from', 'observer', 'to', packet.who)
                 player.ws.send(JSON.stringify({ req:'signal', who:packet.who, data:packet.data}))
             } else {
-                console.log('from', packet.who, 'to', 'observer')
                 broadcast(observers, JSON.stringify({ req:'signal', who:packet.who, data:packet.data}))
             }
         }
@@ -92,7 +79,6 @@ module.exports = function start(port) {
     function onClose(code, msg) {
         for (var i = 0; i < observers.length; i++) {
             if (this === observers[i]) {
-                console.log('removing observer')
                 observers.splice(i, 1)
                 return
             }
@@ -100,7 +86,6 @@ module.exports = function start(port) {
 
         for (var i = 0; i < players.length; i++) {
             if (this === players[i].ws) {
-                console.log('removing player', players[i].id)
                 players.splice(i, 1)
                 return
             }
@@ -111,22 +96,4 @@ module.exports = function start(port) {
         ws.on('message', onMessage)
         ws.on('close', onClose)
     });
-
-    setInterval(loop, 32)
-    var time_delta = 0.032
-    function loop() {
-        for (var i = 0; i < players.length; i++) {
-            var player = players[i]
-
-            player.update(time_delta)
-
-            var newpos = JSON.stringify({
-                req: "update",
-                player: player.id,
-                position: player.character.position.toArray()
-            })
-
-            broadcast(observers, newpos)
-        }
-    }
 }
