@@ -50,7 +50,7 @@ function player_signal(data) {
 
 function player_join() {
     zero_orientation()
-    game_loop = setInterval(tick, 64)
+    game_loop = setInterval(tick, 10)
 
     document.getElementById('status').textContent = 'connected'
 }
@@ -84,10 +84,14 @@ function sampleInput() {
     debug.appendChild(document.createElement('p'))
     debug.appendChild(document.createTextNode("z:" + z))
 
-    return [x, y, z]
+    return [x, 0, z]
 }
 
+var last = 0
 function tilt(event) {
+    console.log(Date.now()-last)
+    last = Date.now()
+
     var x = event.beta // -180-180
     var y = event.gamma // -90-90
     var z = event.alpha // 0-360

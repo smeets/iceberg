@@ -1,4 +1,4 @@
-var WebSocketServer = require('uws').Server
+var uWS = require('uWebSockets.js')
 var Player = require('./player.js')
 
 var os = require('os');
@@ -10,7 +10,8 @@ Object.keys(ifaces).forEach(function (ifname) {
       // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
       return;
     }
-
+    if (ifname.startsWith('vEthernet')) return
+    if (ifname.startsWith('Tailscale')) return
     ip = iface.address
   });
 });
@@ -22,15 +23,12 @@ module.exports = function start(port) {
         ip: ip
     })
 
-    var wss = new WebSocketServer({ port: port })
-    console.log('WSS', '@', port)
-
     var players = []
     var observers = []
 
     function broadcast(sockets, what) {
         for (var i = 0; i < sockets.length; i++)
-            sockets[i].send(what)
+            sockets[i].send(what, false)
     }
 
     var handlers = {
@@ -69,31 +67,36 @@ module.exports = function start(port) {
         }
     }
 
-    function onMessage(message) {
-        if (!message) return
+    function onMessage(ws, msg, isBinary) {
+        if (!msg) return
+        if (isBinary) return
 
-        var packet = JSON.parse(message)
-        handlers[packet.req].apply(this, [packet])
+        var packet = JSON.parse(String.fromCharCode.apply(null, new Uint8Array(msg)))
+        handlers[packet.req].apply(ws, [packet])
     }
 
-    function onClose(code, msg) {
+    function onClose(ws, code, msg) {
         for (var i = 0; i < observers.length; i++) {
-            if (this === observers[i]) {
+            if (ws === observers[i]) {
                 observers.splice(i, 1)
                 return
             }
         }
 
         for (var i = 0; i < players.length; i++) {
-            if (this === players[i].ws) {
+            if (ws === players[i].ws) {
                 players.splice(i, 1)
                 return
             }
         }
     }
 
-    wss.on('connection', function (ws) {
-        ws.on('message', onMessage)
-        ws.on('close', onClose)
-    });
+    var wss = uWS.App().ws('/*', {
+        message: onMessage,
+        close: onClose,
+        drain: (ws) => {
+            console.log('WebSocket backpressure: ' + ws.getBufferedAmount());
+          }
+    }).listen(port, token => token ? console.log('wss @', port) : console.log('wss error'))
+
 }

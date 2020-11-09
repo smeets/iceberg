@@ -54,6 +54,7 @@ function setupNewPlayer(id) {
     cube = new THREE.Mesh( geometry, material );
     scene.add( cube );
     id2cube[id] = cube
+    cube.position.y = 2
     var player = {
         id: id,
         peer: setupNewPeer(id),
@@ -106,7 +107,7 @@ var render = function () {
     for (var i = 0; i < players.length; i++) {
         var player = players[i]
         for (var j = 0; j < 3; j++) {
-            player.velocity[j] += player.input[j] * 0.05
+            player.velocity[j] += player.input[j] * 0.016 * 0.016
             player.velocity[j] *= 0.90 // friction
         }
 
